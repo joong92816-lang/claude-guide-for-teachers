@@ -1,0 +1,47 @@
+name: Monitor updates (daily)
+
+# 매일 자동 실행: 공식 문서/뉴스 변경을 감지해 업데이트 노트 PR 초안을 만듭니다.
+# 초안은 사람이 검토·수정 후 병합합니다. (자동 병합하지 않음)
+
+on:
+  schedule:
+    - cron: "0 21 * * *" # 매일 06:00 KST (UTC 21:00)
+  workflow_dispatch: {} # 수동 실행도 가능
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run monitor script
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run monitor
+
+      - name: Create pull request for drafts
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "docs(updates): 업데이트 노트 초안 추가"
+          title: "🆕 업데이트 노트 초안 (자동 생성)"
+          body: |
+            자동 모니터링 파이프라인이 생성한 업데이트 노트 **초안**입니다.
+
+            - 내용의 정확성을 검토해 주세요.
+            - 필요하면 문구를 다듬고 `tags: [자동초안]` 을 제거하세요.
+            - 확인 후 병합하면 `/updates` 페이지에 노출됩니다.
+          branch: auto/update-notes
+          delete-branch: true
+          add-paths: |
+            content/updates/*.mdx

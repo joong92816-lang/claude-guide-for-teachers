@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Pretendard", system-ui, -apple-system, sans-serif;
+}
+
+/* 폰트 크기 조절: FontSizeControl 이 html[data-font-size] 를 바꾸면
+   html 의 기준 font-size 가 바뀌고, rem 기반 Tailwind 유틸이 전부 함께 확대/축소됩니다. */
+html[data-font-size="sm"] {
+  font-size: 15px;
+}
+html[data-font-size="base"] {
+  font-size: 16px;
+}
+html[data-font-size="lg"] {
+  font-size: 18px;
+}
+html[data-font-size="xl"] {
+  font-size: 20px;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+}
+
+/* MDX 본문 기본 타이포그래피 (간단한 prose 대체) */
+.prose-basic h1 {
+  @apply text-2xl font-bold mt-8 mb-4 text-slate-900;
+}
+.prose-basic h2 {
+  @apply text-xl font-bold mt-8 mb-3 text-slate-900;
+}
+.prose-basic h3 {
+  @apply text-lg font-semibold mt-6 mb-2 text-slate-900;
+}
+.prose-basic p {
+  @apply my-3 leading-relaxed;
+}
+.prose-basic ul {
+  @apply my-3 list-disc pl-6 space-y-1;
+}
+.prose-basic ol {
+  @apply my-3 list-decimal pl-6 space-y-1;
+}
+.prose-basic a {
+  @apply text-brand-600 underline underline-offset-2;
+}
+.prose-basic blockquote {
+  @apply border-l-4 border-brand-100 pl-4 my-4 text-slate-600;
+}
+.prose-basic code {
+  @apply bg-slate-100 rounded px-1.5 py-0.5 text-[0.9em] text-brand-700;
+}
+.prose-basic pre {
+  @apply bg-slate-900 text-slate-100 rounded-lg p-4 my-4 overflow-x-auto text-sm;
+}
+.prose-basic pre code {
+  @apply bg-transparent text-inherit p-0;
+}
+.prose-basic table {
+  @apply my-4 w-full border-collapse text-sm;
+}
+.prose-basic th,
+.prose-basic td {
+  @apply border border-slate-200 px-3 py-2 text-left;
+}

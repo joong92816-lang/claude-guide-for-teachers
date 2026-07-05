@@ -1,0 +1,28 @@
+# Netlify 배포 설정 — Next.js(App Router)
+#
+# 준비:
+#   1) 이 저장소를 GitHub 등에 올린 뒤 Netlify 에서 "Import an existing project" 로 연결.
+#   2) Netlify 대시보드 → Site settings → Environment variables 에
+#      ANTHROPIC_API_KEY 를 추가하세요. (절대 저장소에 커밋하지 않습니다.)
+#   3) 배포하면 아래 설정과 @netlify/plugin-nextjs 가 자동으로 적용됩니다.
+#
+# 로컬에서 배포 미리보기:  npx netlify deploy --build
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # SDK/모니터 스크립트가 Node 22 를 기대합니다.
+  NODE_VERSION = "22"
+  # 빌드 시 devDependencies 도 설치 (기본값이지만 명시).
+  NPM_FLAGS = "--include=dev"
+
+# Next.js 런타임: SSR 페이지·API 라우트(/api/chat)를 Netlify Functions 로 실행.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# 자동 생성되는 모니터링 PR 브랜치(auto/*)에는 Deploy Preview 를 만들지 않음(선택).
+[context.deploy-preview]
+  [context.deploy-preview.environment]
+    # 필요 시 프리뷰 전용 값 지정 가능.
