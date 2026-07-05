@@ -1,16 +1,20 @@
 /**
- * Q&A API — 스트리밍 + 가드레일.
+ * Q&A API — 스트리밍 + 가드레일 (Google Gemini 백엔드).
  *
  * 흐름:
  *   1) IP별 속도 제한 (rate-limit.ts)
  *   2) 마지막 사용자 메시지에 대한 정책 사전 필터 (guardrail.ts)
  *      → 위반 시 모델을 호출하지 않고 경고 문구를 스트리밍으로 반환
- *   3) 통과 시 Claude Opus 4.8 에 스트리밍 요청 (adaptive thinking)
- *      system = [교사용 지침 + /content 지식 베이스] (둘 다 prompt caching)
+ *   3) 통과 시 Google Gemini(무료 티어)에 스트리밍 요청
+ *      systemInstruction = [교사용 지침 + /content 지식 베이스]
  *
  * 응답은 text/plain 토큰 스트림입니다. 클라이언트는 ReadableStream 으로 읽습니다.
+ *
+ * 환경변수:
+ *   GEMINI_API_KEY  (필수)  — https://aistudio.google.com 에서 무료 발급
+ *   GEMINI_MODEL    (선택)  — 기본값 gemini-2.5-flash
  */
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { getKnowledgeBase } from "@/lib/knowledge";
 import { checkGuardrail } from "@/lib/guardrail";
@@ -20,12 +24,9 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = "claude-opus-4-8";
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
-
-// ANTHROPIC_API_KEY 는 환경변수에서 자동으로 읽힘.
-const client = new Anthropic();
 
 const encoder = new TextEncoder();
 
@@ -83,38 +84,37 @@ export async function POST(req: Request): Promise<Response> {
     return textStream(gr.message);
   }
 
+  // API 키 확인 (가드레일 이후 · 모델 호출 직전)
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return textStream(
+      "서버에 GEMINI_API_KEY 가 설정되지 않았습니다. 배포 환경변수에 무료 Gemini API 키를 등록해 주세요.",
+    );
+  }
+
   // 3) 모델 스트리밍 호출
   const knowledge = getKnowledgeBase();
-
-  const anthropicStream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 4096,
-    thinking: { type: "adaptive" },
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        cache_control: { type: "ephemeral" },
-      },
-      {
-        type: "text",
-        text: knowledge,
-        cache_control: { type: "ephemeral" },
-      },
-    ],
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-  });
+  const ai = new GoogleGenAI({ apiKey });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const event of anthropicStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
+        const stream = await ai.models.generateContentStream({
+          model: MODEL,
+          contents: messages.map((m) => ({
+            // Gemini 는 assistant 역할을 "model" 로 표기.
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          })),
+          config: {
+            systemInstruction: `${SYSTEM_PROMPT}\n\n${knowledge}`,
+            maxOutputTokens: 2048,
+          },
+        });
+
+        for await (const chunk of stream) {
+          const text = chunk.text;
+          if (text) controller.enqueue(encoder.encode(text));
         }
       } catch (err) {
         console.error("[api/chat] stream error", err);
@@ -126,9 +126,6 @@ export async function POST(req: Request): Promise<Response> {
       } finally {
         controller.close();
       }
-    },
-    cancel() {
-      anthropicStream.abort();
     },
   });
 

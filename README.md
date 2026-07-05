@@ -11,7 +11,8 @@ npm install
 
 # 2) 환경변수 설정
 cp .env.local.example .env.local
-#   .env.local 을 열어 ANTHROPIC_API_KEY 를 채우세요 (절대 커밋 금지)
+#   .env.local 을 열어 GEMINI_API_KEY 를 채우세요 (무료, 절대 커밋 금지)
+#   무료 키 발급: https://aistudio.google.com/apikey
 
 # 3) 개발 서버 실행
 npm run dev
@@ -45,8 +46,9 @@ Functions 로 실행되어 AI 챗까지 동작합니다.
 1. 저장소를 GitHub 에 올립니다.
 2. Netlify → **Add new site → Import an existing project** 로 저장소를 연결합니다.
    빌드 명령(`npm run build`)과 플러그인은 `netlify.toml` 에서 자동 인식됩니다.
-3. **Site configuration → Environment variables** 에 `ANTHROPIC_API_KEY` 를 추가합니다.
-   (⚠️ 저장소에 커밋하지 마세요. 이 값이 없으면 챗 응답이 동작하지 않습니다.)
+3. **Site configuration → Environment variables** 에 `GEMINI_API_KEY` 를 추가합니다.
+   (무료 발급: <https://aistudio.google.com/apikey> · ⚠️ 저장소에 커밋 금지.
+   이 값이 없으면 챗 응답이 동작하지 않습니다.)
 4. 배포 후 발급되는 `https://<사이트이름>.netlify.app` 주소로 접속합니다.
    이후 `main` 에 push 할 때마다 자동으로 재배포됩니다.
 

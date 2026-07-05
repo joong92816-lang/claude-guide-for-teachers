@@ -15,19 +15,20 @@ npm run dev      # 개발 서버 (http://localhost:3000)
 npm run build    # 프로덕션 빌드
 npm run start    # 빌드 결과 실행
 npm run lint     # ESLint (next/core-web-vitals)
-npm run monitor  # 소식 모니터링 → content/updates 초안 생성 (ANTHROPIC_API_KEY 필요)
+npm run monitor  # (선택·유료) 소식 모니터링 → content/updates 초안 (ANTHROPIC_API_KEY 필요)
 ```
 
-환경변수: `.env.local.example` 를 복사해 `.env.local` 을 만들고 `ANTHROPIC_API_KEY` 를 채운다.
-`.env.local` 은 절대 커밋 금지(.gitignore 에 포함).
+환경변수: `.env.local.example` 를 복사해 `.env.local` 을 만들고 `GEMINI_API_KEY`(무료, 필수)를
+채운다. 무료 발급: https://aistudio.google.com/apikey . `.env.local` 은 절대 커밋 금지.
 
 ## 아키텍처
 
 - **Q&A 파이프라인** (`app/api/chat/route.ts`): 요청은 세 관문을 통과한다 —
   ① `lib/rate-limit.ts`(IP별 속도 제한) → ② `lib/guardrail.ts`(정책 사전 필터, 위반 시
-  모델 호출 없이 경고 반환) → ③ Claude 스트리밍 호출. `system` 은 항상
-  `[SYSTEM_PROMPT, 지식 베이스]` 두 블록이며 둘 다 `cache_control: ephemeral` 로 캐싱된다.
-  응답은 `text/plain` 토큰 스트림이고 `app/chat/ChatClient.tsx` 가 `ReadableStream` 으로 읽는다.
+  모델 호출 없이 경고 반환) → ③ Google Gemini(`@google/genai`) 스트리밍 호출.
+  `systemInstruction` = `SYSTEM_PROMPT + 지식 베이스`. 모델은 `GEMINI_MODEL`(기본
+  `gemini-2.5-flash`). 응답은 `text/plain` 토큰 스트림이고 `app/chat/ChatClient.tsx` 가
+  `ReadableStream` 으로 읽는다.
 
 - **지식 베이스** (`lib/knowledge.ts`): `/content` 의 모든 MDX 본문을 하나의 텍스트로 합쳐
   system 프롬프트 뒤에 근거로 붙인다. 모듈 레벨 캐시(`clearKnowledgeCache()` 로 무효화).
@@ -45,11 +46,12 @@ npm run monitor  # 소식 모니터링 → content/updates 초안 생성 (ANTHRO
 
 ## 모델 / API 규칙
 
-- 모델은 `claude-opus-4-8` 고정(`app/api/chat/route.ts`, `scripts/monitor-updates.mts`).
-- 사고(thinking)는 `{ type: "adaptive" }` 만 사용. `budget_tokens` / `temperature` 등을 넣으면
-  이 모델은 400 을 반환한다.
-- 긴 응답은 반드시 스트리밍(`client.messages.stream()`)으로 처리한다.
-- `ANTHROPIC_API_KEY` 는 환경변수로 자동 주입되므로 코드에 키를 넣지 않는다.
+- **챗**: Google Gemini(`@google/genai`), `GEMINI_MODEL`(기본 `gemini-2.5-flash`, 무료 티어).
+  긴 응답은 `generateContentStream` 으로 스트리밍한다. 키는 `GEMINI_API_KEY` 환경변수.
+- **모니터(선택·유료)**: `scripts/monitor-updates.mts` 는 여전히 `claude-opus-4-8` + 웹 검색을
+  쓴다. `ANTHROPIC_API_KEY` 가 없으면 이 스크립트/워크플로만 실패하고 사이트에는 영향 없다.
+  안 쓰면 `.github/workflows/monitor.yml` 을 비활성화하면 된다.
+- API 키는 코드에 넣지 않고 환경변수로만 주입한다.
 
 ## 안전 규칙 (콘텐츠·기능 변경 시 반드시 지킬 것)
 
@@ -64,7 +66,7 @@ npm run monitor  # 소식 모니터링 → content/updates 초안 생성 (ANTHRO
 ## 배포 (Netlify)
 
 - `netlify.toml` + `@netlify/plugin-nextjs` 로 배포. SSR·`/api/chat` 은 Netlify Functions.
-- `ANTHROPIC_API_KEY` 는 Netlify 환경변수에 설정(저장소 커밋 금지). Node 22.
+- `GEMINI_API_KEY` 를 Netlify 환경변수에 설정(저장소 커밋 금지). Node 22.
 - **중요**: `/chat`(레이아웃 Sidebar)와 `/api/chat`(지식 베이스)는 런타임에 `fs` 로
   `content/` 를 읽는다. 경로가 동적 조합이라 자동 트레이싱이 안 되므로
   `next.config.mjs` 의 `outputFileTracingIncludes` 로 `content/**` 를 함수 번들에
