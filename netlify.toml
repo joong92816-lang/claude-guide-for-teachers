@@ -3,7 +3,7 @@
 # 준비:
 #   1) 이 저장소를 GitHub 등에 올린 뒤 Netlify 에서 "Import an existing project" 로 연결.
 #   2) Netlify 대시보드 → Site settings → Environment variables 에
-#      ANTHROPIC_API_KEY 를 추가하세요. (절대 저장소에 커밋하지 않습니다.)
+#      GEMINI_API_KEY 를 추가하세요. (절대 저장소에 커밋하지 않습니다.)
 #   3) 배포하면 아래 설정과 @netlify/plugin-nextjs 가 자동으로 적용됩니다.
 #
 # 로컬에서 배포 미리보기:  npx netlify deploy --build
